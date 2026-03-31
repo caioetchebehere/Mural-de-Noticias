@@ -1,7 +1,6 @@
-const { kv } = require("@vercel/kv");
-const { put, del } = require("@vercel/blob");
+const { put, del, list } = require("@vercel/blob");
 
-const NEWS_KEY = "mural:noticias:v1";
+const NEWS_BLOB_PATH = "mural-db/news.json";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function json(res, status, payload) {
@@ -39,6 +38,35 @@ function sanitizeItem(item) {
     publishedAt: item.publishedAt,
     attachments: Array.isArray(item.attachments) ? item.attachments : [],
   };
+}
+
+function normalizeItems(items) {
+  return (Array.isArray(items) ? items : [])
+    .map(sanitizeItem)
+    .filter((it) => it.id > 0 && it.title && it.content && it.author && isFresh(it.publishedAt))
+    .sort(sortDesc);
+}
+
+async function readNewsBlobJson() {
+  const listed = await list({ prefix: NEWS_BLOB_PATH, limit: 1 });
+  const found = listed && Array.isArray(listed.blobs) ? listed.blobs[0] : null;
+  if (!found || !found.url) return [];
+  const res = await fetch(found.url, { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = await res.json().catch(function () {
+    return [];
+  });
+  return normalizeItems(data);
+}
+
+async function writeNewsBlobJson(items) {
+  const normalized = normalizeItems(items);
+  await put(NEWS_BLOB_PATH, JSON.stringify(normalized), {
+    access: "public",
+    contentType: "application/json; charset=utf-8",
+    addRandomSuffix: false,
+  });
+  return normalized;
 }
 
 function safeExt(name) {
@@ -87,9 +115,9 @@ async function ensureBlobAttachment(att, newsId) {
 }
 
 async function normalizeAttachmentsForSave(attachments, newsId) {
-  const list = Array.isArray(attachments) ? attachments : [];
+  const listItems = Array.isArray(attachments) ? attachments : [];
   const out = [];
-  for (const att of list) {
+  for (const att of listItems) {
     const normalized = await ensureBlobAttachment(att, newsId);
     if (normalized) out.push(normalized);
   }
@@ -97,34 +125,16 @@ async function normalizeAttachmentsForSave(attachments, newsId) {
 }
 
 function getBlobUrls(attachments) {
-  const list = Array.isArray(attachments) ? attachments : [];
-  return list
+  const listItems = Array.isArray(attachments) ? attachments : [];
+  return listItems
     .map((att) => String(att && att.url ? att.url : ""))
     .filter((url) => /^https?:\/\//.test(url));
-}
-
-function normalizeItems(items) {
-  return (Array.isArray(items) ? items : [])
-    .map(sanitizeItem)
-    .filter((it) => it.id > 0 && it.title && it.content && it.author && isFresh(it.publishedAt))
-    .sort(sortDesc);
-}
-
-async function readItems() {
-  const raw = await kv.get(NEWS_KEY);
-  return normalizeItems(raw);
-}
-
-async function writeItems(items) {
-  const normalized = normalizeItems(items);
-  await kv.set(NEWS_KEY, normalized);
-  return normalized;
 }
 
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") {
-      const items = await readItems();
+      const items = await readNewsBlobJson();
       return json(res, 200, { items });
     }
 
@@ -139,12 +149,9 @@ module.exports = async function handler(req, res) {
         return json(res, 400, { error: "Autor, título e conteúdo são obrigatórios." });
       }
 
-      const items = await readItems();
+      const items = await readNewsBlobJson();
       const nextId = items.reduce((max, it) => (it.id > max ? it.id : max), 0) + 1;
-      const normalizedAttachments = await normalizeAttachmentsForSave(
-        attachments,
-        nextId
-      );
+      const normalizedAttachments = await normalizeAttachmentsForSave(attachments, nextId);
       items.unshift({
         id: nextId,
         author,
@@ -153,7 +160,7 @@ module.exports = async function handler(req, res) {
         publishedAt: new Date().toISOString(),
         attachments: normalizedAttachments,
       });
-      const saved = await writeItems(items);
+      const saved = await writeNewsBlobJson(items);
       return json(res, 200, { items: saved });
     }
 
@@ -169,17 +176,14 @@ module.exports = async function handler(req, res) {
         return json(res, 400, { error: "ID, autor, título e conteúdo são obrigatórios." });
       }
 
-      const items = await readItems();
+      const items = await readNewsBlobJson();
       const idx = items.findIndex((it) => it.id === id);
       if (idx === -1) {
         return json(res, 404, { error: "Notícia não encontrada." });
       }
 
       const oldUrls = getBlobUrls(items[idx].attachments);
-      const normalizedAttachments = await normalizeAttachmentsForSave(
-        attachments,
-        id
-      );
+      const normalizedAttachments = await normalizeAttachmentsForSave(attachments, id);
       const newUrls = new Set(getBlobUrls(normalizedAttachments));
       const toDelete = oldUrls.filter((url) => !newUrls.has(url));
       if (toDelete.length > 0) {
@@ -193,7 +197,7 @@ module.exports = async function handler(req, res) {
         content,
         attachments: normalizedAttachments,
       };
-      const saved = await writeItems(items);
+      const saved = await writeNewsBlobJson(items);
       return json(res, 200, { items: saved });
     }
 
@@ -203,7 +207,7 @@ module.exports = async function handler(req, res) {
         return json(res, 400, { error: "Informe o ID da notícia para excluir." });
       }
 
-      const items = await readItems();
+      const items = await readNewsBlobJson();
       const deleting = items.find((it) => it.id === id);
       const filtered = items.filter((it) => it.id !== id);
       if (deleting) {
@@ -212,7 +216,7 @@ module.exports = async function handler(req, res) {
           await Promise.allSettled(urls.map((url) => del(url)));
         }
       }
-      const saved = await writeItems(filtered);
+      const saved = await writeNewsBlobJson(filtered);
       return json(res, 200, { items: saved });
     }
 
@@ -221,7 +225,7 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     return json(res, 500, {
       error:
-        "Falha ao acessar armazenamento compartilhado. Verifique a integração do Vercel KV.",
+        "Falha ao acessar armazenamento compartilhado. Verifique a integração do Vercel Blob.",
       details: err && err.message ? err.message : "Erro desconhecido.",
     });
   }
