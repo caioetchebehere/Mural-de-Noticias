@@ -190,8 +190,10 @@
 
       var meta = document.createElement("p");
       meta.className = "news-meta";
+      var author = (item.author || "").trim();
       meta.textContent =
-        "Publicado em " + formatDateTime(new Date(item.publishedAt));
+        (author ? "Publicado por " + author + " em " : "Publicado em ") +
+        formatDateTime(new Date(item.publishedAt));
 
       var body = document.createElement("p");
       body.className = "news-body";

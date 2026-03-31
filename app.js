@@ -5,6 +5,7 @@
   var ALLOWED_EXT = [".pdf", ".xls", ".xlsx", ".png"];
 
   var form = document.getElementById("news-form");
+  var authorInput = document.getElementById("news-author");
   var titleInput = document.getElementById("news-title");
   var contentInput = document.getElementById("news-content");
   var filesInput = document.getElementById("news-files");
@@ -16,19 +17,9 @@
   var submitBtn = document.getElementById("submit-news");
   var cancelEditBtn = document.getElementById("cancel-edit");
   var editBanner = document.getElementById("edit-banner");
-  var loginForm = document.getElementById("login-form");
-  var authUserInput = document.getElementById("auth-user");
-  var authPassInput = document.getElementById("auth-pass");
-  var authError = document.getElementById("auth-error");
-  var authStatus = document.getElementById("auth-status");
-  var loginBtn = document.getElementById("login-btn");
-  var logoutBtn = document.getElementById("logout-btn");
 
   var editingId = null;
   var editingAttachments = null;
-  var isAuthenticated = false;
-  var currentUser = "";
-  var isAdmin = false;
 
   function getExtension(name) {
     var i = name.lastIndexOf(".");
@@ -42,30 +33,6 @@
   function showError(message) {
     formError.textContent = message;
     formError.hidden = !message;
-  }
-
-  function showAuthError(message) {
-    if (!authError) return;
-    authError.textContent = message;
-    authError.hidden = !message;
-  }
-
-  function setAuthStatus(text, kind) {
-    if (!authStatus) return;
-    authStatus.textContent = text;
-    authStatus.classList.remove("auth-status--ok", "auth-status--warn");
-    if (kind === "ok") authStatus.classList.add("auth-status--ok");
-    if (kind === "warn") authStatus.classList.add("auth-status--warn");
-  }
-
-  function setPublishingEnabled(enabled) {
-    var fields = form.querySelectorAll("input, textarea, button");
-    for (var i = 0; i < fields.length; i++) {
-      fields[i].disabled = !enabled;
-    }
-    if (!enabled) {
-      cancelEdit();
-    }
   }
 
   function cancelEdit() {
@@ -85,16 +52,10 @@
   function refreshList() {
     var items = M.loadNews();
     var highlightId = M.getLatestTodayId(items);
-    var opts = null;
-    if (isAuthenticated) {
-      opts = {
-        onEdit: startEdit,
-      };
-      if (isAdmin) {
-        opts.onDelete = deleteNews;
-      }
-    }
-    M.renderNewsList(newsList, feedEmpty, items, highlightId, opts);
+    M.renderNewsList(newsList, feedEmpty, items, highlightId, {
+      onEdit: startEdit,
+      onDelete: deleteNews,
+    });
   }
 
   function findItemById(items, id) {
@@ -105,7 +66,6 @@
   }
 
   function startEdit(id) {
-    if (!isAuthenticated) return;
     var items = M.loadNews();
     var item = findItemById(items, id);
     if (!item) return;
@@ -119,6 +79,7 @@
       };
     });
 
+    authorInput.value = item.author || "";
     titleInput.value = item.title;
     contentInput.value = item.content;
     if (filesInput) filesInput.value = "";
@@ -135,7 +96,6 @@
   }
 
   function deleteNews(id) {
-    if (!isAuthenticated || !isAdmin) return;
     if (!window.confirm("Excluir esta publicação? Esta ação não pode ser desfeita.")) {
       return;
     }
@@ -219,18 +179,20 @@
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
-    if (!isAuthenticated) {
-      showError("Faça login para publicar notícias.");
-      return;
-    }
     showError("");
 
+    var author = authorInput.value.trim();
     var title = titleInput.value.trim();
     var content = contentInput.value.trim();
     var files = filesInput.files
       ? Array.prototype.slice.call(filesInput.files)
       : [];
 
+    if (!author) {
+      showError("Informe o nome do responsável pela publicação.");
+      authorInput.focus();
+      return;
+    }
     if (!title) {
       showError("Informe o título da notícia.");
       titleInput.focus();
@@ -285,6 +247,7 @@
           var merged = base.concat(newAttachments);
           items[idx] = {
             id: items[idx].id,
+            author: author,
             title: title,
             content: content,
             publishedAt: items[idx].publishedAt,
@@ -293,6 +256,7 @@
         } else {
           var item = {
             id: M.nextId(items),
+            author: author,
             title: title,
             content: content,
             publishedAt: new Date().toISOString(),
@@ -333,97 +297,6 @@
       });
   });
 
-  function applyAuthState(authenticated, username) {
-    isAuthenticated = authenticated;
-    currentUser = authenticated ? (username || "") : "";
-    isAdmin = currentUser.toLowerCase() === "admin";
-    setPublishingEnabled(authenticated);
-    if (authenticated) {
-      setAuthStatus("Sessão ativa para " + username + ".", "ok");
-      if (loginBtn) loginBtn.hidden = true;
-      if (logoutBtn) logoutBtn.hidden = false;
-      showAuthError("");
-    } else {
-      setAuthStatus("Acesso bloqueado. Faça login para publicar.", "warn");
-      if (loginBtn) loginBtn.hidden = false;
-      if (logoutBtn) logoutBtn.hidden = true;
-    }
-    refreshList();
-  }
-
-  function checkSession() {
-    return fetch("/api/session", { credentials: "same-origin" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("Falha ao validar sessão.");
-        return res.json();
-      })
-      .then(function (data) {
-        applyAuthState(!!data.authenticated, data.username || "admin");
-      })
-      .catch(function () {
-        applyAuthState(false, "admin");
-      });
-  }
-
-  if (loginForm) {
-    loginForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      showAuthError("");
-      var username = authUserInput.value.trim();
-      var password = authPassInput.value;
-      if (!username || !password) {
-        showAuthError("Informe usuário e senha.");
-        return;
-      }
-      if (loginBtn) {
-        loginBtn.disabled = true;
-        loginBtn.textContent = "Entrando...";
-      }
-      fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ username: username, password: password }),
-      })
-        .then(function (res) {
-          if (!res.ok) throw new Error("Usuário ou senha inválidos.");
-          return res.json();
-        })
-        .then(function (data) {
-          applyAuthState(true, data.username || username);
-          authPassInput.value = "";
-        })
-        .catch(function (err) {
-          applyAuthState(false, "admin");
-          showAuthError(err.message || "Não foi possível autenticar.");
-        })
-        .finally(function () {
-          if (loginBtn) {
-            loginBtn.disabled = false;
-            loginBtn.textContent = "Entrar";
-          }
-        });
-    });
-  }
-
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", function () {
-      fetch("/api/logout", {
-        method: "POST",
-        credentials: "same-origin",
-      })
-        .then(function () {
-          if (authUserInput) authUserInput.value = "";
-          if (authPassInput) authPassInput.value = "";
-          applyAuthState(false, "admin");
-        })
-        .catch(function () {
-          applyAuthState(false, "admin");
-        });
-    });
-  }
-
   setShareUrl();
-  setPublishingEnabled(false);
-  checkSession();
+  refreshList();
 })();
