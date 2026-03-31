@@ -20,6 +20,7 @@
 
   var editingId = null;
   var editingAttachments = null;
+  var currentItems = [];
 
   function getExtension(name) {
     var i = name.lastIndexOf(".");
@@ -33,6 +34,19 @@
   function showError(message) {
     formError.textContent = message;
     formError.hidden = !message;
+  }
+
+  function requestJson(url, options) {
+    return fetch(url, options).then(function (res) {
+      if (!res.ok) {
+        return res.json().catch(function () {
+          return {};
+        }).then(function (data) {
+          throw new Error(data.error || "Falha na comunicação com o servidor.");
+        });
+      }
+      return res.json();
+    });
   }
 
   function cancelEdit() {
@@ -49,13 +63,23 @@
     showError("");
   }
 
-  function refreshList() {
-    var items = M.loadNews();
-    var highlightId = M.getLatestTodayId(items);
-    M.renderNewsList(newsList, feedEmpty, items, highlightId, {
+  function renderFromState() {
+    var highlightId = M.getLatestTodayId(currentItems);
+    M.renderNewsList(newsList, feedEmpty, currentItems, highlightId, {
       onEdit: startEdit,
       onDelete: deleteNews,
     });
+  }
+
+  function refreshList() {
+    return requestJson("/api/news")
+      .then(function (data) {
+        currentItems = Array.isArray(data.items) ? data.items : [];
+        renderFromState();
+      })
+      .catch(function (err) {
+        showError(err.message || "Não foi possível carregar as notícias.");
+      });
   }
 
   function findItemById(items, id) {
@@ -66,8 +90,7 @@
   }
 
   function startEdit(id) {
-    var items = M.loadNews();
-    var item = findItemById(items, id);
+    var item = findItemById(currentItems, id);
     if (!item) return;
 
     editingId = id;
@@ -99,25 +122,19 @@
     if (!window.confirm("Excluir esta publicação? Esta ação não pode ser desfeita.")) {
       return;
     }
-    var wasEditing = editingId === id;
-    var items = M.loadNews().filter(function (it) {
-      return it.id !== id;
-    });
-    try {
-      M.saveNews(items);
-    } catch (err) {
-      if (
-        err &&
-        (err.name === "QuotaExceededError" || err.code === 22 || err.code === 1014)
-      ) {
-        showError("Não foi possível salvar após excluir. Tente novamente.");
-      } else {
+
+    requestJson("/api/news?id=" + encodeURIComponent(String(id)), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then(function (data) {
+        currentItems = Array.isArray(data.items) ? data.items : [];
+        if (editingId === id) cancelEdit();
+        renderFromState();
+      })
+      .catch(function (err) {
         showError(err.message || "Erro ao excluir.");
-      }
-      return;
-    }
-    if (wasEditing) cancelEdit();
-    refreshList();
+      });
   }
 
   function setShareUrl() {
@@ -173,7 +190,7 @@
   if (cancelEditBtn) {
     cancelEditBtn.addEventListener("click", function () {
       cancelEdit();
-      refreshList();
+      renderFromState();
     });
   }
 
@@ -219,7 +236,7 @@
     var btn = submitBtn || form.querySelector('button[type="submit"]');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = editingId != null ? "Salvando…" : "Publicando…";
+      btn.textContent = editingId != null ? "Salvando..." : "Publicando...";
     }
 
     var promises = files.map(function (file) {
@@ -230,58 +247,34 @@
 
     Promise.all(promises)
       .then(function (newAttachments) {
-        var items = M.loadNews();
-
         if (editingId != null) {
-          var idx = -1;
-          for (var i = 0; i < items.length; i++) {
-            if (items[i].id === editingId) {
-              idx = i;
-              break;
-            }
-          }
-          if (idx === -1) {
-            throw new Error("Notícia não encontrada. Atualize a página.");
-          }
           var base = editingAttachments ? editingAttachments.slice() : [];
-          var merged = base.concat(newAttachments);
-          items[idx] = {
-            id: items[idx].id,
+          return requestJson("/api/news", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: editingId,
+              author: author,
+              title: title,
+              content: content,
+              attachments: base.concat(newAttachments),
+            }),
+          });
+        }
+        return requestJson("/api/news", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             author: author,
             title: title,
             content: content,
-            publishedAt: items[idx].publishedAt,
-            attachments: merged,
-          };
-        } else {
-          var item = {
-            id: M.nextId(items),
-            author: author,
-            title: title,
-            content: content,
-            publishedAt: new Date().toISOString(),
             attachments: newAttachments,
-          };
-          items = [item].concat(items);
-        }
-
-        try {
-          M.saveNews(items);
-        } catch (err) {
-          if (
-            err &&
-            (err.name === "QuotaExceededError" ||
-              err.code === 22 ||
-              err.code === 1014)
-          ) {
-            throw new Error(
-              "Armazenamento cheio. Reduza o tamanho dos anexos ou aguarde notícias antigas saírem (7 dias)."
-            );
-          }
-          throw err;
-        }
-
-        refreshList();
+          }),
+        });
+      })
+      .then(function (data) {
+        currentItems = Array.isArray(data.items) ? data.items : [];
+        renderFromState();
         cancelEdit();
         showError("");
       })

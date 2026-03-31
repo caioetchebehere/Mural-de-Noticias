@@ -1,0 +1,10 @@
+{
+  "name": "mural-de-noticias",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Mural de noticias com persistencia compartilhada no Vercel KV",
+  "dependencies": {
+    "@vercel/blob": "latest",
+    "@vercel/kv": "latest"
+  }
+}

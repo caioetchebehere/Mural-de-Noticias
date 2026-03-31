@@ -69,6 +69,7 @@
   }
 
   function attachmentHref(att) {
+    if (att.url) return att.url;
     if (att.dataBase64 && att.mimeType) {
       return "data:" + att.mimeType + ";base64," + att.dataBase64;
     }
