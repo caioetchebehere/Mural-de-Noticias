@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mural de notícias – Somente leitura</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header site-header--readonly">
+    <h1>Mural de notícias – Somente leitura</h1>
+    <p class="tagline">Últimas notícias do Suporte Lojas (mesmo conteúdo do painel completo, sem publicar)</p>
+  </header>
+
+  <main class="main">
+    <section class="panel feed-panel" aria-labelledby="feed-heading">
+      <h2 id="feed-heading">Notícias publicadas</h2>
+      <p id="feed-empty" class="feed-empty">
+        Nenhuma notícia nos últimos 7 dias. Quem publica usa o painel principal no mesmo endereço da equipe.
+      </p>
+      <ul id="news-list" class="news-list" hidden></ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Notícias com até 7 dias aparecem aqui e no painel principal no mesmo computador (localStorage).
+      Cada navegador tem sua própria cópia; sincronizar vários analistas exige API ou banco no servidor.
+    </p>
+  </footer>
+
+  <script src="mural-common.js"></script>
+  <script src="leitura.js"></script>
+</body>
+</html>

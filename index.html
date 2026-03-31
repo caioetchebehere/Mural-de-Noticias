@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Notícias – Suporte Lojas</title>
+  <meta name="description" content="Painel interno para publicação e acompanhamento de notícias do time de Suporte Lojas." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>Painel de Notícias – Suporte Lojas</h1>
+    <p class="tagline">Comunicação do dia a dia para o time de suporte das lojas</p>
+    <p class="env-badge">Ambiente interno</p>
+  </header>
+
+  <main class="main">
+    <section class="panel auth-panel" aria-labelledby="auth-heading">
+      <h2 id="auth-heading">Acesso para publicação</h2>
+      <p class="share-hint">Somente usuários autenticados podem publicar, editar ou excluir notícias.</p>
+      <p id="auth-status" class="auth-status" role="status">Verificando sessão...</p>
+      <form id="login-form" class="news-form auth-form" novalidate>
+        <div class="auth-grid">
+          <div class="field">
+            <label for="auth-user">Usuário</label>
+            <input type="text" id="auth-user" name="username" required autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="auth-pass">Senha</label>
+            <input type="password" id="auth-pass" name="password" required autocomplete="current-password" />
+          </div>
+        </div>
+        <p id="auth-error" class="form-error" role="alert" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="login-btn">Entrar</button>
+          <button type="button" class="btn-secondary" id="logout-btn" hidden>Sair</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel share-panel" aria-labelledby="share-heading">
+      <h2 id="share-heading">Link para analistas (somente leitura)</h2>
+      <p class="share-hint">
+        Envie este endereço para quem só precisa acompanhar o mural, sem publicar notícias.
+      </p>
+      <div class="share-row">
+        <input
+          type="text"
+          id="share-url"
+          class="share-input"
+          readonly
+          aria-label="URL da página somente leitura"
+        />
+        <button type="button" id="copy-share-url" class="btn-secondary">Copiar link</button>
+      </div>
+    </section>
+
+    <section class="panel publish-panel" aria-labelledby="publish-heading">
+      <h2 id="publish-heading">Publicar notícia</h2>
+      <form id="news-form" class="news-form" novalidate>
+        <div class="field">
+          <label for="news-title">Título da notícia</label>
+          <input
+            type="text"
+            id="news-title"
+            name="title"
+            required
+            maxlength="200"
+            placeholder="Ex.: Atualização do procedimento de troca"
+            autocomplete="off"
+          />
+        </div>
+        <div class="field">
+          <label for="news-content">Conteúdo da notícia</label>
+          <textarea
+            id="news-content"
+            name="content"
+            required
+            rows="6"
+            placeholder="Descreva a notícia para a equipe..."
+          ></textarea>
+        </div>
+        <div class="field">
+          <label for="news-files">Anexos (PDF, Excel ou PNG)</label>
+          <input
+            type="file"
+            id="news-files"
+            name="files"
+            multiple
+            accept=".pdf,.xls,.xlsx,.png,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/png"
+          />
+          <span class="hint">Formatos aceitos: .pdf, .xls, .xlsx, .png. Você pode selecionar vários arquivos.</span>
+        </div>
+        <p id="form-error" class="form-error" role="alert" hidden></p>
+        <p id="edit-banner" class="edit-banner" role="status" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="submit-news">Publicar notícia</button>
+          <button type="button" class="btn-secondary" id="cancel-edit" hidden>Cancelar edição</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel feed-panel" aria-labelledby="feed-heading">
+      <h2 id="feed-heading">Notícias publicadas</h2>
+      <p id="feed-empty" class="feed-empty">Nenhuma notícia ainda. Publique a primeira acima.</p>
+      <ul id="news-list" class="news-list" hidden></ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      As notícias permanecem listadas por 7 dias após a publicação e são salvas no navegador deste equipamento (localStorage).
+      Este login controla o acesso ao formulário de publicação em ambiente Vercel, mas os dados de notícias continuam locais neste navegador.
+    </p>
+  </footer>
+
+  <script src="mural-common.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
