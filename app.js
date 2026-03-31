@@ -27,6 +27,8 @@
   var editingId = null;
   var editingAttachments = null;
   var isAuthenticated = false;
+  var currentUser = "";
+  var isAdmin = false;
 
   function getExtension(name) {
     var i = name.lastIndexOf(".");
@@ -83,10 +85,16 @@
   function refreshList() {
     var items = M.loadNews();
     var highlightId = M.getLatestTodayId(items);
-    M.renderNewsList(newsList, feedEmpty, items, highlightId, {
-      onEdit: startEdit,
-      onDelete: deleteNews,
-    });
+    var opts = null;
+    if (isAuthenticated) {
+      opts = {
+        onEdit: startEdit,
+      };
+      if (isAdmin) {
+        opts.onDelete = deleteNews;
+      }
+    }
+    M.renderNewsList(newsList, feedEmpty, items, highlightId, opts);
   }
 
   function findItemById(items, id) {
@@ -127,7 +135,7 @@
   }
 
   function deleteNews(id) {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !isAdmin) return;
     if (!window.confirm("Excluir esta publicação? Esta ação não pode ser desfeita.")) {
       return;
     }
@@ -327,6 +335,8 @@
 
   function applyAuthState(authenticated, username) {
     isAuthenticated = authenticated;
+    currentUser = authenticated ? (username || "") : "";
+    isAdmin = currentUser.toLowerCase() === "admin";
     setPublishingEnabled(authenticated);
     if (authenticated) {
       setAuthStatus("Sessão ativa para " + username + ".", "ok");

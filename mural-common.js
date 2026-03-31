@@ -134,10 +134,13 @@
     if (feedEmpty) feedEmpty.hidden = true;
     ul.hidden = false;
 
-    var hasAdmin =
+    var hasEdit =
       adminOpts &&
-      typeof adminOpts.onEdit === "function" &&
+      typeof adminOpts.onEdit === "function";
+    var hasDelete =
+      adminOpts &&
       typeof adminOpts.onDelete === "function";
+    var hasActions = hasEdit || hasDelete;
 
     items.forEach(function (item) {
       var li = document.createElement("li");
@@ -147,34 +150,38 @@
         li.classList.add("news-card--hoje");
       }
 
-      if (hasAdmin) {
+      if (hasActions) {
         var toolbar = document.createElement("div");
         toolbar.className = "news-card__actions";
 
-        var btnEdit = document.createElement("button");
-        btnEdit.type = "button";
-        btnEdit.className = "btn-card btn-card--edit";
-        btnEdit.textContent = "Editar";
-        btnEdit.setAttribute("aria-label", "Editar: " + item.title);
-        (function (newsId) {
-          btnEdit.addEventListener("click", function () {
-            adminOpts.onEdit(newsId);
-          });
-        })(item.id);
+        if (hasEdit) {
+          var btnEdit = document.createElement("button");
+          btnEdit.type = "button";
+          btnEdit.className = "btn-card btn-card--edit";
+          btnEdit.textContent = "Editar";
+          btnEdit.setAttribute("aria-label", "Editar: " + item.title);
+          (function (newsId) {
+            btnEdit.addEventListener("click", function () {
+              adminOpts.onEdit(newsId);
+            });
+          })(item.id);
+          toolbar.appendChild(btnEdit);
+        }
 
-        var btnDel = document.createElement("button");
-        btnDel.type = "button";
-        btnDel.className = "btn-card btn-card--delete";
-        btnDel.textContent = "Excluir";
-        btnDel.setAttribute("aria-label", "Excluir: " + item.title);
-        (function (newsId) {
-          btnDel.addEventListener("click", function () {
-            adminOpts.onDelete(newsId);
-          });
-        })(item.id);
+        if (hasDelete) {
+          var btnDel = document.createElement("button");
+          btnDel.type = "button";
+          btnDel.className = "btn-card btn-card--delete";
+          btnDel.textContent = "Excluir";
+          btnDel.setAttribute("aria-label", "Excluir: " + item.title);
+          (function (newsId) {
+            btnDel.addEventListener("click", function () {
+              adminOpts.onDelete(newsId);
+            });
+          })(item.id);
+          toolbar.appendChild(btnDel);
+        }
 
-        toolbar.appendChild(btnEdit);
-        toolbar.appendChild(btnDel);
         li.appendChild(toolbar);
       }
 
