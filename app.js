@@ -110,7 +110,7 @@
       return {
         name: a.name,
         mimeType: a.mimeType,
-        dataBase64: a.dataBase64,
+        url: a.url,
       };
     });
 
