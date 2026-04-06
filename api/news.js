@@ -129,7 +129,7 @@ function getBlobUrls(attachments) {
   const listItems = Array.isArray(attachments) ? attachments : [];
   return listItems
     .map((att) => String(att && att.url ? att.url : ""))
-    .filter((url) => /^https?:\/\//.test(url));
+    .filter((url) => /^https?:\/\/[^/]+\.blob\.vercel-storage\.com\//.test(url));
 }
 
 module.exports = async function handler(req, res) {

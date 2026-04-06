@@ -235,8 +235,14 @@
           } else if (href) {
             var a2 = document.createElement("a");
             a2.href = href;
-            a2.download = att.name;
-            a2.textContent = att.name;
+            if (att.mimeType === "text/uri-list") {
+              a2.target = "_blank";
+              a2.rel = "noopener noreferrer";
+              a2.textContent = (att.name || href);
+            } else {
+              a2.download = att.name;
+              a2.textContent = att.name;
+            }
             fileLi.appendChild(a2);
           } else {
             fileLi.textContent = att.name;

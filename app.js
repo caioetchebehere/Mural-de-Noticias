@@ -19,10 +19,64 @@
   var openUploadBtn = document.getElementById("open-upload-btn");
   var closeDialogBtn = document.getElementById("close-dialog-btn");
   var fileNamesEl = document.getElementById("file-names");
+  var linkList = document.getElementById("link-list");
+  var addLinkBtn = document.getElementById("add-link-btn");
 
   var editingId = null;
   var editingAttachments = null;
   var currentItems = [];
+
+  function addLinkEntry(name, url) {
+    var entry = document.createElement("div");
+    entry.className = "link-entry";
+
+    var nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.placeholder = "Nome do link";
+    nameInput.maxLength = 200;
+    nameInput.value = name || "";
+    nameInput.className = "link-name-input";
+
+    var urlInput = document.createElement("input");
+    urlInput.type = "url";
+    urlInput.placeholder = "https://...";
+    urlInput.maxLength = 2000;
+    urlInput.value = url || "";
+    urlInput.className = "link-url-input";
+
+    var removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn-remove-link";
+    removeBtn.textContent = "\u2715";
+    removeBtn.setAttribute("aria-label", "Remover link");
+    removeBtn.addEventListener("click", function () {
+      if (linkList) linkList.removeChild(entry);
+    });
+
+    entry.appendChild(nameInput);
+    entry.appendChild(urlInput);
+    entry.appendChild(removeBtn);
+    if (linkList) linkList.appendChild(entry);
+  }
+
+  function getLinkAttachments() {
+    var entries = linkList ? linkList.querySelectorAll(".link-entry") : [];
+    var links = [];
+    for (var i = 0; i < entries.length; i++) {
+      var nameInput = entries[i].querySelector(".link-name-input");
+      var urlInput = entries[i].querySelector(".link-url-input");
+      var url = urlInput ? urlInput.value.trim() : "";
+      var name = nameInput ? nameInput.value.trim() : "";
+      if (url && /^https?:\/\//.test(url)) {
+        links.push({ name: name || url, url: url, mimeType: "text/uri-list" });
+      }
+    }
+    return links;
+  }
+
+  function clearLinkEntries() {
+    if (linkList) linkList.innerHTML = "";
+  }
 
   function getExtension(name) {
     var i = name.lastIndexOf(".");
@@ -66,6 +120,7 @@
     form.reset();
     if (filesInput) filesInput.value = "";
     if (fileNamesEl) fileNamesEl.textContent = "";
+    clearLinkEntries();
     if (cancelEditBtn) cancelEditBtn.hidden = true;
     if (editBanner) {
       editBanner.hidden = true;
@@ -106,13 +161,16 @@
     if (!item) return;
 
     editingId = id;
-    editingAttachments = (item.attachments || []).map(function (a) {
-      return {
-        name: a.name,
-        mimeType: a.mimeType,
-        url: a.url,
-      };
-    });
+    editingAttachments = (item.attachments || [])
+      .filter(function (a) { return a.mimeType !== "text/uri-list"; })
+      .map(function (a) {
+        return { name: a.name, mimeType: a.mimeType, url: a.url };
+      });
+
+    clearLinkEntries();
+    (item.attachments || [])
+      .filter(function (a) { return a.mimeType === "text/uri-list"; })
+      .forEach(function (a) { addLinkEntry(a.name, a.url); });
 
     authorInput.value = item.author || "";
     titleInput.value = item.title;
@@ -147,6 +205,12 @@
       .catch(function (err) {
         showError(err.message || "Erro ao excluir.");
       });
+  }
+
+  if (addLinkBtn) {
+    addLinkBtn.addEventListener("click", function () {
+      addLinkEntry("", "");
+    });
   }
 
   if (filesInput && fileNamesEl) {
@@ -239,6 +303,7 @@
 
     Promise.all(promises)
       .then(function (newAttachments) {
+        var linkAttachments = getLinkAttachments();
         if (editingId != null) {
           var base = editingAttachments ? editingAttachments.slice() : [];
           return requestJson("/api/news", {
@@ -249,7 +314,7 @@
               author: author,
               title: title,
               content: content,
-              attachments: base.concat(newAttachments),
+              attachments: base.concat(newAttachments).concat(linkAttachments),
             }),
           });
         }
@@ -260,7 +325,7 @@
             author: author,
             title: title,
             content: content,
-            attachments: newAttachments,
+            attachments: newAttachments.concat(linkAttachments),
           }),
         });
       })

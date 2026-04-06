@@ -89,7 +89,7 @@
           ></textarea>
         </div>
         <div class="field">
-          <label for="news-files">Anexos</label>
+          <label for="news-files">Anexos (arquivo)</label>
           <label class="file-drop-zone" for="news-files">
             <span class="file-drop-zone__icon" aria-hidden="true">📎</span>
             <span class="file-drop-zone__text">Clique para selecionar arquivos</span>
@@ -103,6 +103,11 @@
             />
           </label>
           <span id="file-names" class="file-names"></span>
+        </div>
+        <div class="field">
+          <label>Links externos (opcional)</label>
+          <div id="link-list" class="link-list"></div>
+          <button type="button" class="btn-secondary btn-add-link" id="add-link-btn">+ Adicionar link</button>
         </div>
         <p id="form-error" class="form-error" role="alert" hidden></p>
         <p id="edit-banner" class="edit-banner" role="status" hidden></p>
