@@ -65,6 +65,7 @@ async function writeNewsBlobJson(items) {
     access: "public",
     contentType: "application/json; charset=utf-8",
     addRandomSuffix: false,
+    allowOverwrite: true,
   });
   return normalized;
 }
