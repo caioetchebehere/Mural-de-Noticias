@@ -5,35 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Notícias – Suporte Lojas</title>
   <meta name="description" content="Painel interno para publicação e acompanhamento de notícias do time de Suporte Lojas." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="site-header">
-    <h1>Painel de Notícias – Suporte Lojas</h1>
-    <p class="tagline">Comunicação do dia a dia para o time de suporte das lojas</p>
-    <p class="env-badge">Ambiente interno</p>
+    <div class="site-header__inner">
+      <div class="site-header__brand">
+        <span class="site-header__icon" aria-hidden="true">📋</span>
+        <div>
+          <h1>Painel de Notícias</h1>
+          <p class="tagline">Suporte Lojas · Comunicação interna</p>
+        </div>
+      </div>
+      <span class="env-badge">Ambiente interno</span>
+    </div>
   </header>
 
   <main class="main">
-    <section class="panel share-panel" aria-labelledby="share-heading">
-      <h2 id="share-heading">Link para analistas (somente leitura)</h2>
-      <p class="share-hint">
-        Envie este endereço para quem só precisa acompanhar o mural, sem publicar notícias.
-      </p>
-      <div class="share-row">
-        <input
-          type="text"
-          id="share-url"
-          class="share-input"
-          readonly
-          aria-label="URL da página somente leitura"
-        />
-        <button type="button" id="copy-share-url" class="btn-secondary">Copiar link</button>
+    <section class="panel feed-panel" aria-labelledby="feed-heading">
+      <div class="feed-header">
+        <h2 id="feed-heading">Notícias publicadas</h2>
+        <button type="button" class="btn-primary" id="open-upload-btn">+ Nova publicação</button>
       </div>
+      <div id="feed-empty" class="feed-empty">
+        <span class="feed-empty__icon" aria-hidden="true">📰</span>
+        <p class="feed-empty__title">Nenhuma notícia publicada</p>
+        <p class="feed-empty__hint">Clique em "Nova publicação" para adicionar a primeira notícia.</p>
+      </div>
+      <ul id="news-list" class="news-list" hidden></ul>
     </section>
+  </main>
 
-    <section class="panel publish-panel" aria-labelledby="publish-heading">
-      <h2 id="publish-heading">Publicar notícia</h2>
+  <footer class="site-footer">
+    <p>
+      As notícias permanecem listadas por 7 dias após a publicação e são compartilhadas para todos os acessos no mesmo deploy.
+      Em caso de indisponibilidade da API, a gravação e leitura podem falhar temporariamente.
+    </p>
+  </footer>
+
+  <!-- Upload / Publish Modal -->
+  <dialog id="upload-dialog" class="upload-dialog" aria-labelledby="dialog-heading">
+    <div class="dialog-inner">
+      <div class="dialog-header">
+        <h2 id="dialog-heading">Publicar notícia</h2>
+        <button type="button" class="btn-dialog-close" id="close-dialog-btn" aria-label="Fechar">&#x2715;</button>
+      </div>
       <form id="news-form" class="news-form" novalidate>
         <div class="field">
           <label for="news-author">Nome</label>
@@ -70,15 +89,20 @@
           ></textarea>
         </div>
         <div class="field">
-          <label for="news-files">Anexos (PDF, Excel ou PNG)</label>
-          <input
-            type="file"
-            id="news-files"
-            name="files"
-            multiple
-            accept=".pdf,.xls,.xlsx,.png,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/png"
-          />
-          <span class="hint">Formatos aceitos: .pdf, .xls, .xlsx, .png. Você pode selecionar vários arquivos.</span>
+          <label for="news-files">Anexos</label>
+          <label class="file-drop-zone" for="news-files">
+            <span class="file-drop-zone__icon" aria-hidden="true">📎</span>
+            <span class="file-drop-zone__text">Clique para selecionar arquivos</span>
+            <span class="file-drop-zone__hint">PDF, Excel ou PNG · Múltiplos arquivos permitidos</span>
+            <input
+              type="file"
+              id="news-files"
+              name="files"
+              multiple
+              accept=".pdf,.xls,.xlsx,.png,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/png"
+            />
+          </label>
+          <span id="file-names" class="file-names"></span>
         </div>
         <p id="form-error" class="form-error" role="alert" hidden></p>
         <p id="edit-banner" class="edit-banner" role="status" hidden></p>
@@ -87,21 +111,8 @@
           <button type="button" class="btn-secondary" id="cancel-edit" hidden>Cancelar edição</button>
         </div>
       </form>
-    </section>
-
-    <section class="panel feed-panel" aria-labelledby="feed-heading">
-      <h2 id="feed-heading">Notícias publicadas</h2>
-      <p id="feed-empty" class="feed-empty">Nenhuma notícia ainda. Publique a primeira acima.</p>
-      <ul id="news-list" class="news-list" hidden></ul>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <p>
-      As notícias permanecem listadas por 7 dias após a publicação e são compartilhadas para todos os acessos no mesmo deploy.
-      Em caso de indisponibilidade da API, a gravação e leitura podem falhar temporariamente.
-    </p>
-  </footer>
+    </div>
+  </dialog>
 
   <script src="mural-common.js"></script>
   <script src="app.js"></script>

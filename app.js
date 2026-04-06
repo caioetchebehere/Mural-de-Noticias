@@ -12,11 +12,13 @@
   var formError = document.getElementById("form-error");
   var newsList = document.getElementById("news-list");
   var feedEmpty = document.getElementById("feed-empty");
-  var shareUrlInput = document.getElementById("share-url");
-  var copyShareBtn = document.getElementById("copy-share-url");
   var submitBtn = document.getElementById("submit-news");
   var cancelEditBtn = document.getElementById("cancel-edit");
   var editBanner = document.getElementById("edit-banner");
+  var dialog = document.getElementById("upload-dialog");
+  var openUploadBtn = document.getElementById("open-upload-btn");
+  var closeDialogBtn = document.getElementById("close-dialog-btn");
+  var fileNamesEl = document.getElementById("file-names");
 
   var editingId = null;
   var editingAttachments = null;
@@ -34,6 +36,15 @@
   function showError(message) {
     formError.textContent = message;
     formError.hidden = !message;
+  }
+
+  function openDialog() {
+    if (dialog.showModal) dialog.showModal();
+  }
+
+  function closeDialog() {
+    if (dialog.close) dialog.close();
+    cancelEdit();
   }
 
   function requestJson(url, options) {
@@ -54,6 +65,7 @@
     editingAttachments = null;
     form.reset();
     if (filesInput) filesInput.value = "";
+    if (fileNamesEl) fileNamesEl.textContent = "";
     if (cancelEditBtn) cancelEditBtn.hidden = true;
     if (editBanner) {
       editBanner.hidden = true;
@@ -114,8 +126,8 @@
     }
     if (submitBtn) submitBtn.textContent = "Salvar alterações";
     showError("");
+    openDialog();
     titleInput.focus();
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function deleteNews(id) {
@@ -137,59 +149,39 @@
       });
   }
 
-  function setShareUrl() {
-    if (!shareUrlInput) return;
-    try {
-      shareUrlInput.value = new URL("leitura.html", window.location.href).href;
-    } catch (e) {
-      shareUrlInput.value =
-        window.location.origin +
-        window.location.pathname.replace(/[^/]+$/, "leitura.html");
-    }
+  if (filesInput && fileNamesEl) {
+    filesInput.addEventListener("change", function () {
+      var files = Array.prototype.slice.call(filesInput.files || []);
+      if (files.length === 0) {
+        fileNamesEl.textContent = "";
+      } else {
+        fileNamesEl.textContent = files.map(function (f) { return f.name; }).join(", ");
+      }
+    });
   }
 
-  if (copyShareBtn && shareUrlInput) {
-    copyShareBtn.addEventListener("click", function () {
-      shareUrlInput.select();
-      shareUrlInput.setSelectionRange(0, 99999);
-      var url = shareUrlInput.value;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(
-          function () {
-            copyShareBtn.textContent = "Copiado!";
-            setTimeout(function () {
-              copyShareBtn.textContent = "Copiar link";
-            }, 2000);
-          },
-          function () {
-            try {
-              document.execCommand("copy");
-              copyShareBtn.textContent = "Copiado!";
-              setTimeout(function () {
-                copyShareBtn.textContent = "Copiar link";
-              }, 2000);
-            } catch (err) {
-              copyShareBtn.textContent = "Selecione e copie (Ctrl+C)";
-            }
-          }
-        );
-      } else {
-        try {
-          document.execCommand("copy");
-          copyShareBtn.textContent = "Copiado!";
-          setTimeout(function () {
-            copyShareBtn.textContent = "Copiar link";
-          }, 2000);
-        } catch (err2) {
-          copyShareBtn.textContent = "Selecione e copie (Ctrl+C)";
-        }
-      }
+  if (openUploadBtn) {
+    openUploadBtn.addEventListener("click", function () {
+      cancelEdit();
+      openDialog();
+      authorInput.focus();
+    });
+  }
+
+  if (closeDialogBtn) {
+    closeDialogBtn.addEventListener("click", closeDialog);
+  }
+
+  // Close on backdrop click
+  if (dialog) {
+    dialog.addEventListener("click", function (e) {
+      if (e.target === dialog) closeDialog();
     });
   }
 
   if (cancelEditBtn) {
     cancelEditBtn.addEventListener("click", function () {
-      cancelEdit();
+      closeDialog();
       renderFromState();
     });
   }
@@ -275,7 +267,7 @@
       .then(function (data) {
         currentItems = Array.isArray(data.items) ? data.items : [];
         renderFromState();
-        cancelEdit();
+        closeDialog();
         showError("");
       })
       .catch(function (err) {
@@ -290,6 +282,5 @@
       });
   });
 
-  setShareUrl();
   refreshList();
 })();
